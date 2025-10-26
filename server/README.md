@@ -116,3 +116,30 @@ http ответ:
 * Внутренняя ошибка сервера
   * HTTP статус: 500 Internal Server Error
   * Тело ответа: <текст ошибки>
+
+# Поток обработки на сервере
+## Check UserName
+Client  
+&nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/check-username  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckUserName](infrastructure/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.CheckUserName](application/use_cases/user/register.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (username rules)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByUserName](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [SQL запрос в БД](infrastructure/persistence/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← проверка существования  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← результат use case  
+&nbsp;&nbsp;&nbsp;&nbsp;← формирование JSON-ответа  
+← Client получает {"available": true/false}
+
+## Check Email
+Client  
+&nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/check-email  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckEmail](infrastructure/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.CheckEmail](application/use_cases/user/register.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (email rules)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByEmail](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [SQL запрос в БД](infrastructure/persistence/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← проверка существования  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← результат use case  
+&nbsp;&nbsp;&nbsp;&nbsp;← формирование JSON-ответа  
+← Client получает {"available": true/false}
