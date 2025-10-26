@@ -13,7 +13,7 @@
   #### пример:
   * User — сущность.
   * User имеет функцию create, где есть проверка что поля не пустые, возраст больше минимального и так далее.  
-  * User.Service имеет функцию проверки что username и email уникален. 
+  * User.Service имеет функцию проверки что username и email уникален, вообще такое относящееся к бд можно и в use_case оставить.
   * Repositories.UserRepository — интерфейс репозитория, которые реализован в Infrastructure.  
   
 * ### Application
@@ -56,3 +56,63 @@
         - Интерфейс `UserRepository` реализован в `infrastructure.persistence`
 
     4. Вызывает `infrastructure.email.SMTP_Sender` для отправки письма на почту
+
+
+# Описание запросов к серверу
+## Проверка коректности userName
+http запрос
+* метод: POST
+* URL: "/api/users/check-email"
+* Content-Type: application/json
+* Тело:{ "username": "john_doe" } 
+http ответ:
+* Успешный запрос, имя доступно
+  * HTTP статус: 200 OK
+  * JSON: {"available": true}
+* Успешный запрос, имя занято
+    * HTTP статус: 200 OK
+    * JSON: {"available": false}
+* Неверный HTTP метод:
+  * HTTP статус: 405 Method Not Allowed
+  * Тело ответа: method not allowed
+* Некорректный JSON в теле запроса
+  * HTTP статус: 400 Bad Request
+  * Тело ответа: invalid JSON body
+* Ошибка валидации username
+  * HTTP статус: 400 Bad Request
+  * Тело ответа: "username must be 3–20 characters long" или "username may contain only letters, digits, and underscores"
+* Внутренняя ошибка сервера
+  * HTTP статус: 500 Internal Server Error
+  * Тело ответа: <текст ошибки>
+
+## Проверка корректности email
+
+http запрос
+
+* метод: POST
+
+* URL: "/api/users/check-email"
+
+* Content-Type: application/json
+
+* Тело: { "email": "user@example.com" }
+
+http ответ:
+* Успешный запрос, email доступен
+  * HTTP статус: 200 OK
+  * JSON: {"available": true}
+* Успешный запрос, email уже занят
+  * HTTP статус: 200 OK
+  * JSON: {"available": false}
+* Неверный HTTP метод
+  * HTTP статус: 405 Method Not Allowed
+  * Тело ответа: method not allowed
+* Некорректный JSON в теле запроса
+  * HTTP статус: 400 Bad Request
+  * Тело ответа: invalid JSON body
+* Ошибка валидации email
+  * HTTP статус: 400 Bad Request
+  * Тело ответа: "invalid email format"
+* Внутренняя ошибка сервера
+  * HTTP статус: 500 Internal Server Error
+  * Тело ответа: <текст ошибки>

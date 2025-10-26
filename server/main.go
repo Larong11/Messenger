@@ -1,21 +1,38 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
+	"net/http"
+	"server/application/use_cases/user"
+	infr_http "server/infrastructure/http"
+	"server/infrastructure/http/handlers"
+	"server/infrastructure/persistence"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
+var ctx = context.Background()
 
 func main() {
-	//TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
-	// to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
-	s := "gopher"
-	fmt.Printf("Hello and welcome, %s!\n", s)
 
-	for i := 1; i <= 5; i++ {
-		//TIP <p>To start your debugging session, right-click your code in the editor and select the Debug option.</p> <p>We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-		// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.</p>
-		fmt.Println("i =", 100/i)
+	pool, err := pgxpool.New(ctx, "postgres://<username>:<password>@localhost:5432/gotodo")
+	if err != nil {
+		log.Fatal("Unable to connect to database:", err)
+	}
+	// Verify the connection
+	if err := pool.Ping(ctx); err != nil {
+		log.Fatal("Unable to ping database:", err)
+	}
+
+	fmt.Println("Connected to PostgreSQL database!")
+
+	userRepo := persistence.NewPostgresUserRepository(pool)
+	registerUserUseCases := user.NewRegisterUserUseCases(userRepo)
+	userHandler := handlers.NewUserHandler(registerUserUseCases)
+	router := infr_http.NewRouter(userHandler)
+	err = http.ListenAndServe(":8080", router)
+	if err != nil {
+		fmt.Println(err)
 	}
 }
