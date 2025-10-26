@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"server/domain/repositories"
 	package_user "server/domain/user"
 )
@@ -48,10 +49,27 @@ func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, las
 	if err != nil {
 		return nil, err
 	}
+	checkID, err := uc.userRepo.FindByUserName(ctx, userName)
+	if err != nil {
+		return nil, err
+	}
+	if checkID != nil {
+		return nil, errors.New("username with such username already exists")
+	}
+
 	err = package_user.ValidateEmail(email)
 	if err != nil {
 		return nil, err
 	}
+
+	checkID, err = uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if checkID != nil {
+		return nil, errors.New("user with such email already exists")
+	}
+
 	passwordHash, err := package_user.GeneratePasswordHash(password)
 	if err != nil {
 		return nil, err
