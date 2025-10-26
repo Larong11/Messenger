@@ -21,5 +21,8 @@ func ValidateEmail(email string) error {
 	if err != nil {
 		return errors.New("invalid email format")
 	}
+	if len(email) > 255 {
+		return errors.New("email too long")
+	}
 	return nil
 }

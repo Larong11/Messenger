@@ -29,18 +29,34 @@
 * ### Infrastructure
   Infrastructure — это слой, который обеспечивает конкретные реализации технических деталей, необходимых для работы приложения:
 
-  * работа с базой данных
-  * HTTP / WebSocket / gRPC
-  * кэширование, очередь сообщений, логирование
-  * интеграция с внешними сервисами (email, push, платежи)
-  #### пример
-    * реализация PostgresUserRepository
-    * реализация httpHandler
+    * Работа с базой данных (PostgreSQL, Redis и т.д.)
+    * Интеграция с внешними сервисами (SMTP, push-уведомления, платежи)
+    * Взаимодействие с файловой системой, очередями сообщений, логирование
+    * Реализация интерфейсов, определённых в Domain или Application
+
+  #### пример:
+    * `PostgresUserRepository` — реализация интерфейса `UserRepository`
+    * `SMTPMailService` — реализация отправки писем
+    * Любые драйверы и адаптеры для внешних сервисов
+
+* ### Interfaces
+  Interfaces — слой, через который внешние клиенты взаимодействуют с приложением.  
+  Этот слой **не содержит бизнес-логики**, а только обрабатывает входящие запросы и формирует ответы.
+
+    * HTTP хэндлеры (`UserHandler`)
+    * gRPC серверы
+    * CLI команды
+
+  #### пример:
+    * `UserHandler.CheckUserName` — принимает HTTP-запрос, вызывает use-case и возвращает JSON
+    * `UserHandler.CheckEmail` — принимает email для проверки, вызывает use-case и формирует ответ
+    * `UserHandler.CreateUser` — принимает данные пользователя, вызывает `RegisterUserUseCase`, возвращает результат
+
 
 ## Полный пример работы DDD на примере создания пользователя
 1. **Сервер получает HTTP-запрос**
 
-2. **Handler (Infrastructure)** обрабатывает запрос и вызывает нужный `UserUseCase.CreateUser`
+2. **Handler (Interface)** обрабатывает запрос и вызывает нужный `UserUseCase.CreateUser`
 
 3. **UserUseCase (Application)** выполняет сценарий:
 
@@ -121,7 +137,7 @@ http ответ:
 ## Check UserName
 Client  
 &nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/check-username  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckUserName](infrastructure/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckUserName](interface/http/handlers/user_handler.go)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.CheckUserName](application/use_cases/user/register.go)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (username rules)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByUserName](domain/repositories/user_repository.go)  
@@ -134,7 +150,7 @@ Client
 ## Check Email
 Client  
 &nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/check-email  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckEmail](infrastructure/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CheckEmail](interface/http/handlers/user_handler.go)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.CheckEmail](application/use_cases/user/register.go)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (email rules)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByEmail](domain/repositories/user_repository.go)  

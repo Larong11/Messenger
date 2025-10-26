@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 	"server/domain/repositories"
-	"server/domain/user"
+	package_user "server/domain/user"
 )
 
 type RegisterUserUseCases struct {
@@ -16,7 +16,7 @@ func NewRegisterUserUseCases(ur repositories.UserRepository) *RegisterUserUseCas
 	}
 }
 func (uc *RegisterUserUseCases) CheckUserName(ctx context.Context, userName string) (bool, error) {
-	err := user.ValidateUserName(userName)
+	err := package_user.ValidateUserName(userName)
 	if err != nil {
 		return false, err
 	}
@@ -24,13 +24,13 @@ func (uc *RegisterUserUseCases) CheckUserName(ctx context.Context, userName stri
 	if err != nil {
 		return false, err
 	}
-	if ID == nil {
+	if ID != nil {
 		return false, nil
 	}
 	return true, nil
 }
 func (uc *RegisterUserUseCases) CheckEmail(ctx context.Context, email string) (bool, error) {
-	err := user.ValidateEmail(email)
+	err := package_user.ValidateEmail(email)
 	if err != nil {
 		return false, err
 	}
@@ -38,8 +38,31 @@ func (uc *RegisterUserUseCases) CheckEmail(ctx context.Context, email string) (b
 	if err != nil {
 		return false, err
 	}
-	if ID == nil {
+	if ID != nil {
 		return false, nil
 	}
 	return true, nil
+}
+func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, lastName, userName, email, password, avatarURL string) (*int, error) {
+	err := package_user.ValidateUserName(userName)
+	if err != nil {
+		return nil, err
+	}
+	err = package_user.ValidateEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	passwordHash, err := package_user.GeneratePasswordHash(password)
+	if err != nil {
+		return nil, err
+	}
+	user, err := package_user.NewUser(firstName, lastName, userName, email, passwordHash, avatarURL)
+	if err != nil {
+		return nil, err
+	}
+	ID, err := uc.userRepo.CreateUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return &ID, nil
 }

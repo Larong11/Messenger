@@ -7,16 +7,16 @@ import (
 	"log"
 	"net/http"
 	"server/application/use_cases/user"
-	infr_http "server/infrastructure/http"
-	"server/infrastructure/http/handlers"
 	"server/infrastructure/persistence"
+	infr_http "server/interface/http"
+	"server/interface/http/handlers"
 )
 
 var ctx = context.Background()
 
 func main() {
 
-	pool, err := pgxpool.New(ctx, "postgres://<username>:<password>@localhost:5432/gotodo")
+	pool, err := pgxpool.New(ctx, "postgres://postgres:135790@localhost:5432/messenger_db?sslmode=disable")
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}
