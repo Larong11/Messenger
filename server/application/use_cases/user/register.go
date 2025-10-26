@@ -78,7 +78,8 @@ func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, las
 	if err != nil {
 		return nil, err
 	}
-	ID, err := uc.userRepo.CreateUser(ctx, user)
+	code := package_user.Generate6DigitCode()
+	ID, err := uc.userRepo.CreateUserWithVerificationCode(ctx, user, code)
 	if err != nil {
 		return nil, err
 	}

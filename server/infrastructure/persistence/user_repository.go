@@ -46,17 +46,46 @@ func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email string) 
 	}
 	return &u.ID, nil
 }
-func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *user.User) (int, error) {
-	query := `INSERT INTO users (
-                    first_name, last_name, username, email, password_hash, is_email_verified, created_at, avatar_url, 
-                   last_seen_at, user_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id;`
-	row := r.pool.QueryRow(ctx, query,
-		user.FirstName, user.LastName, user.UserName, user.Email, user.PasswordHash, user.IsEmailVerified, time.Now().UTC(),
-		"url", time.Now().UTC(), user.UserStatus)
-	var id int
-	err := row.Scan(&id)
+func (r *PostgresUserRepository) CreateUserWithVerificationCode(ctx context.Context, user *user.User, verificationCode string) (int, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return -1, err
 	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		}
+	}()
+
+	// Вставка пользователя
+	queryUser := `INSERT INTO users (
+        first_name, last_name, username, email, password_hash, is_email_verified,
+        created_at, avatar_url, last_seen_at, user_status
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id;`
+
+	var id int
+	err = tx.QueryRow(ctx, queryUser,
+		user.FirstName, user.LastName, user.UserName, user.Email, user.PasswordHash,
+		user.IsEmailVerified, time.Now().UTC(), "url", time.Now().UTC(), user.UserStatus,
+	).Scan(&id)
+	if err != nil {
+		return -1, err
+	}
+
+	// Вставка кода верификации
+	queryCode := `INSERT INTO user_verification_codes (user_id, verification_code, created_at)
+                  VALUES ($1, $2, $3);`
+	_, err = tx.Exec(ctx, queryCode, id, verificationCode, time.Now().UTC())
+	if err != nil {
+		return -1, err
+	}
+
+	// Коммит транзакции
+	err = tx.Commit(ctx)
+	if err != nil {
+		return -1, err
+	}
+
 	return id, nil
 }
