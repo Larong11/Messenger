@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"server/application/use_cases/user"
 	"server/infrastructure/email/smtp"
 	"server/infrastructure/persistence"
@@ -13,13 +14,18 @@ import (
 	"server/interface/websocket"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 var ctx = context.Background()
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+	dbURL := os.Getenv("DATABASE_URL")
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:135790@localhost:5432/messenger_db?sslmode=disable")
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}

@@ -51,14 +51,14 @@ func (r *PostgresUserRepository) FindByEmail(ctx context.Context, email string) 
 
 func (r *PostgresUserRepository) CreateUser(ctx context.Context, user *user.User) (int, error) {
 	query := `INSERT INTO users (
-	        first_name, last_name, username, email, password_hash, is_email_verified,
+	        first_name, last_name, username, email, password_hash,
 	        created_at, avatar_url, last_seen_at, user_status
-	    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id;`
+	    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;`
 
 	var id int
 	err := r.pool.QueryRow(ctx, query,
 		user.FirstName, user.LastName, user.UserName, user.Email, user.PasswordHash,
-		user.IsEmailVerified, time.Now().UTC(), "url", time.Now().UTC(), user.UserStatus,
+		time.Now().UTC(), "url", time.Now().UTC(), user.UserStatus,
 	).Scan(&id)
 	if err != nil {
 		return -1, upgradeerrors.NewInternal("db error")
