@@ -132,7 +132,143 @@ http ответ:
 * Внутренняя ошибка сервера
   * HTTP статус: 500 Internal Server Error
   * Тело ответа: <текст ошибки>
+## Запрос кода подтверждения
+http запрос
+* метод: POST
+* URL: "/api/users/request-verification-code"
+* Content-Type: application/json
+* Тело:
+```json
+{
+  "email": "john@example.com"
+}
+```
+http ответ:
 
+* Успешная отправка кода
+
+  * HTTP статус: 200 OK
+
+  * Тело ответа: пустое
+
+* Неверный HTTP метод
+
+  * HTTP статус: 405 Method Not Allowed
+
+  * Тело ответа: "method not allowed"
+
+* Некорректный JSON в теле запроса
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "invalid JSON body"
+
+* Некорректный формат email
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "invalid email format"
+
+* Пользователь с таким email уже существует
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "user with such email exists"
+
+* Ошибка генерации кода
+
+  * HTTP статус: 500 Internal Server Error
+
+  * Тело ответа: <текст ошибки>
+
+* Внутренняя ошибка сервера
+
+  * HTTP статус: 500 Internal Server Error
+
+  * Тело ответа: <текст ошибки>
+## Создание пользователя
+http запрос
+* метод: POST
+* URL: "/api/users/create-user"
+* Content-Type: application/json
+* Тело:
+```json
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "avatar_url": "https://example.com/avatar.png",
+  "verification_code": "123456"
+}
+```
+http ответ:
+
+* Успешное создание пользователя
+
+  * HTTP статус: 200 OK
+
+  * JSON: {"id": 42}
+
+* Неверный HTTP метод
+
+  * HTTP статус: 405 Method Not Allowed
+
+  * Тело ответа: method not allowed
+
+* Некорректный JSON в теле запроса
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: invalid JSON body
+
+* Ошибка валидации username
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "username must be 3–20 characters long" или "username may contain only letters, digits, and underscores"
+
+* Ошибка валидации email
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "invalid email format"
+
+* Пользователь с таким username уже существует
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "username with such username already exists"
+
+* Пользователь с таким email уже существует
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "user with such email already exists"
+* Истёк код верификации
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "verification code expired"
+
+* Некорректный код верификации
+
+  * HTTP статус: 400 Bad Request
+
+  * Тело ответа: "incorrect verification code"
+
+* Ошибка при генерации хеша пароля
+
+  * HTTP статус: 500 Internal Server Error
+
+  * Тело ответа: "failed to generate password hash"
+
+* Внутренняя ошибка сервера
+
+  * HTTP статус: 500 Internal Server Error
+
+  * Тело ответа: <текст ошибки>
 # Поток обработки на сервере
 ## Check UserName
 Client  
@@ -159,3 +295,35 @@ Client
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← результат use case  
 &nbsp;&nbsp;&nbsp;&nbsp;← формирование JSON-ответа  
 ← Client получает {"available": true/false}
+
+## Request Verification Code
+Client  
+&nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/request-verification-code  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.RequestVerificationCode](interface/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.RequestVerificationCode](application/use_cases/user/register.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (email rules)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByEmail](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ проверка существования пользователя  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.CreateVerificationCode](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← генерация кода и сохранение в БД  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← результат use case (успех или ошибка)  
+&nbsp;&nbsp;&nbsp;&nbsp;← формирование HTTP-ответа  
+← Client получает HTTP 200 OK или сообщение об ошибке
+
+## Create User
+Client  
+&nbsp;&nbsp;&nbsp;&nbsp;→ POST /api/users/create-user  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserHandler.CreateUser](interface/http/handlers/user_handler.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [RegisterUserUseCases.RegisterUser](application/use_cases/user/register.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [domain validation](domain/user/validation.go) (username, email rules)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByUserName](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.FindByEmail](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ проверка существования пользователя  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [packageuser.GeneratePasswordHash](domain/user/generate.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [packageuser.NewUser](domain/user/entity.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.GetVerificationCode](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ проверка кода верификации и TTL  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ [UserRepository.CreateUser](domain/repositories/user_repository.go)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← результат use case (успешное создание или ошибка)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← формирование HTTP-ответа  
+← Client получает {"id": 42} или сообщение об ошибке

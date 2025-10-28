@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"net/http"
 	"server/application/use_cases/user"
+	"server/infrastructure/email/smtp"
 	"server/infrastructure/persistence"
-	infr_http "server/interface/http"
 	"server/interface/http/handlers"
+	infrhttp "server/interface/router"
+	"server/interface/websocket"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ctx = context.Background()
@@ -27,10 +30,20 @@ func main() {
 
 	fmt.Println("Connected to PostgreSQL database!")
 
+	smtpConfig := smtp.Config{
+		Host:     "smtp.gmail.com", // or your SMTP host
+		Port:     "587",            // 587 for TLS, 465 for SSL
+		Username: "your-email@gmail.com",
+		Password: "your-app-password", // Use app password for Gmail
+		From:     "your-email@gmail.com",
+	}
+	emailService := smtp.NewEmailService(smtpConfig)
+
 	userRepo := persistence.NewPostgresUserRepository(pool)
-	registerUserUseCases := user.NewRegisterUserUseCases(userRepo)
+	registerUserUseCases := user.NewRegisterUserUseCases(userRepo, emailService)
 	userHandler := handlers.NewUserHandler(registerUserUseCases)
-	router := infr_http.NewRouter(userHandler)
+	WSHandler := websocket.NewWSHandler()
+	router := infrhttp.NewRouter(userHandler, WSHandler)
 	err = http.ListenAndServe(":8080", router)
 	if err != nil {
 		fmt.Println(err)

@@ -1,14 +1,14 @@
 package user
 
 import (
-	"fmt"
+	"server/internal/errors"
 	"time"
 )
 
-type UserStatus int // симуляция enum
+type Status int // симуляция enum
 
 const (
-	Offline UserStatus = iota // Отчет начинается с 0
+	Offline Status = iota // Отчет начинается с 0
 	Online
 )
 
@@ -23,16 +23,16 @@ type User struct {
 	CreatedAt       time.Time
 	AvatarURL       string
 	LastSeenAt      time.Time
-	UserStatus      UserStatus
+	UserStatus      Status
 }
 
 func NewUser(firstName, lastName, userName, Email, Password, AvatarURL string) (*User, error) {
 	if firstName == "" || lastName == "" || userName == "" || Email == "" || Password == "" {
-		return nil, fmt.Errorf(`nil parameter`)
+		return nil, errors.NewBadRequest("empty fields")
 	}
 	if len(firstName) > 50 || len(lastName) > 50 || len(userName) > 50 || len(Email) > 100 || len(Password) > 255 {
-		return nil, fmt.Errorf(`too big parameter`)
+		return nil, errors.NewBadRequest("too long fields")
 	}
-	user := &User{FirstName: firstName, LastName: lastName, UserName: userName, Email: Email, PasswordHash: Password, IsEmailVerified: false, UserStatus: 1, AvatarURL: AvatarURL}
+	user := &User{FirstName: firstName, LastName: lastName, UserName: userName, Email: Email, PasswordHash: Password, IsEmailVerified: false, UserStatus: Offline, AvatarURL: AvatarURL}
 	return user, nil
 }

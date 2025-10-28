@@ -4,20 +4,26 @@ import (
 	"context"
 	"errors"
 	"server/domain/repositories"
-	package_user "server/domain/user"
+	"server/domain/services"
+	packageuser "server/domain/user"
+	"time"
 )
 
+const CodeTTL = 10 * time.Minute
+
 type RegisterUserUseCases struct {
-	userRepo repositories.UserRepository
+	userRepo     repositories.UserRepository
+	emailService services.EmailService
 }
 
-func NewRegisterUserUseCases(ur repositories.UserRepository) *RegisterUserUseCases {
+func NewRegisterUserUseCases(ur repositories.UserRepository, es services.EmailService) *RegisterUserUseCases {
 	return &RegisterUserUseCases{
-		userRepo: ur,
+		userRepo:     ur,
+		emailService: es,
 	}
 }
 func (uc *RegisterUserUseCases) CheckUserName(ctx context.Context, userName string) (bool, error) {
-	err := package_user.ValidateUserName(userName)
+	err := packageuser.ValidateUserName(userName)
 	if err != nil {
 		return false, err
 	}
@@ -31,7 +37,7 @@ func (uc *RegisterUserUseCases) CheckUserName(ctx context.Context, userName stri
 	return true, nil
 }
 func (uc *RegisterUserUseCases) CheckEmail(ctx context.Context, email string) (bool, error) {
-	err := package_user.ValidateEmail(email)
+	err := packageuser.ValidateEmail(email)
 	if err != nil {
 		return false, err
 	}
@@ -44,8 +50,9 @@ func (uc *RegisterUserUseCases) CheckEmail(ctx context.Context, email string) (b
 	}
 	return true, nil
 }
-func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, lastName, userName, email, password, avatarURL string) (*int, error) {
-	err := package_user.ValidateUserName(userName)
+
+func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, lastName, userName, email, password, avatarURL, verificationCode string) (*int, error) {
+	err := packageuser.ValidateUserName(userName)
 	if err != nil {
 		return nil, err
 	}
@@ -54,10 +61,10 @@ func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, las
 		return nil, err
 	}
 	if checkID != nil {
-		return nil, errors.New("username with such username already exists")
+		return nil, errors.New("user with such username already exists")
 	}
 
-	err = package_user.ValidateEmail(email)
+	err = packageuser.ValidateEmail(email)
 	if err != nil {
 		return nil, err
 	}
@@ -70,18 +77,54 @@ func (uc *RegisterUserUseCases) RegisterUser(ctx context.Context, firstName, las
 		return nil, errors.New("user with such email already exists")
 	}
 
-	passwordHash, err := package_user.GeneratePasswordHash(password)
+	passwordHash, err := packageuser.GeneratePasswordHash(password)
 	if err != nil {
 		return nil, err
 	}
-	user, err := package_user.NewUser(firstName, lastName, userName, email, passwordHash, avatarURL)
+	user, err := packageuser.NewUser(firstName, lastName, userName, email, passwordHash, avatarURL)
 	if err != nil {
 		return nil, err
 	}
-	code := package_user.Generate6DigitCode()
-	ID, err := uc.userRepo.CreateUserWithVerificationCode(ctx, user, code)
+
+	storedVerificationCode, createdAt, err := uc.userRepo.GetVerificationCode(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if time.Since(createdAt) > CodeTTL {
+		return nil, errors.New("verification code expired")
+	}
+	if storedVerificationCode != verificationCode {
+		return nil, errors.New("incorrect verification code")
+	}
+	ID, err := uc.userRepo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 	return &ID, nil
+}
+func (uc *RegisterUserUseCases) RequestVerificationCode(ctx context.Context, email string) error {
+	err := packageuser.ValidateEmail(email)
+	if err != nil {
+		return err
+	}
+	ID, err := uc.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	if ID != nil {
+		return errors.New("user with such email exists")
+	}
+	code, err := packageuser.Generate6DigitCode()
+	if err != nil {
+		return err
+	}
+	err = uc.userRepo.CreateVerificationCode(ctx, email, code)
+	if err != nil {
+		return err
+	}
+	//err = uc.emailService.SendVerificationCode(ctx, email, code)// TODO функция пока не рабочая, нет открытых портов
+	//if err != nil {
+	//	return err
+	//}
+	return nil
 }
